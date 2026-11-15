@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cold Case Daily</title>
+<style>
+:root{--bg:#f3ede2;--card:#fffaf0;--ink:#241f1a;--mute:#6b6055;--acc:#9b1c1c;--line:#d8ccb8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15130f;--card:#201c17;--ink:#ece3d3;--mute:#a09585;--acc:#e0554b;--line:#3a332a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15130f;--card:#201c17;--ink:#ece3d3;--mute:#a09585;--acc:#e0554b;--line:#3a332a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 Georgia,"Times New Roman",serif}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+h1,h2,.mono{font-family:"Courier New",Courier,monospace;letter-spacing:.04em}
+h1{margin:0;font-size:1.7rem;text-transform:uppercase}
+h1 span{color:var(--acc)}
+h2{font-size:.95rem;text-transform:uppercase;color:var(--mute);margin:28px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-end}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;text-align:center;min-width:72px}
+.stat b{display:block;font:700 1.2rem "Courier New",monospace;color:var(--acc)}
+.stat small{font-size:.7rem;color:var(--mute);text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.stamp{display:inline-block;border:2px solid var(--acc);color:var(--acc);padding:2px 10px;font:700 .8rem "Courier New",monospace;text-transform:uppercase;transform:rotate(-2deg);margin-bottom:8px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:12px}
+.facts div{font-size:.9rem;border-left:3px solid var(--acc);padding-left:8px}
+.facts small{display:block;color:var(--mute);text-transform:uppercase;font:.68rem "Courier New",monospace}
+ol.clues{margin:0;padding-left:0;list-style:none;counter-reset:c}
+ol.clues li{counter-increment:c;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px 10px 44px;margin-bottom:8px;position:relative}
+ol.clues li::before{content:counter(c);position:absolute;left:12px;top:9px;font:700 1rem "Courier New",monospace;color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:10px}
+.sus{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;transition:.2s}
+.sus.cleared{opacity:.45}
+.sus.cleared .nm{text-decoration:line-through}
+.sus .nm{font-weight:700}
+.sus .rl{color:var(--mute);font-size:.88rem}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1px solid rgba(0,0,0,.3)}
+.btns{display:flex;gap:6px;margin-top:10px}
+button{font:600 .8rem "Courier New",monospace;text-transform:uppercase;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;flex:1}
+button.acc{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.4;cursor:not-allowed}
+.res{margin-top:20px;border:2px solid var(--acc)}
+.lives{font:1rem "Courier New",monospace;color:var(--acc)}
+.mute{color:var(--mute);font-size:.88rem}
+.hint{margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>Cold Case <span>Daily</span></h1><div class="mute mono" id="date"></div></div>
+    <div class="stats">
+      <div class="stat"><b id="lvl">1</b><small>Difficulty</small></div>
+      <div class="stat"><b id="sol">0</b><small>Solved</small></div>
+      <div class="stat"><b id="stk">0</b><small>Streak</small></div>
+    </div>
+  </div>
+  <h2>Case file</h2>
+  <div class="card" id="file"></div>
+  <h2>Evidence</h2>
+  <ol class="clues" id="clues"></ol>
+  <h2>Suspects <span class="mute" style="text-transform:none">· tap “Rule out” to keep notes</span></h2>
+  <div class="grid" id="sus"></div>
+  <div class="mono" style="margin-top:14px">Guesses left: <span class="lives" id="lives"></span></div>
+  <div class="card res" id="res" hidden></div>
+  <p class="mute hint">A new case arrives every day. Solve cases to raise the difficulty: more suspects, more red herrings, and vaguer descriptions.</p>
+</div>
+<script>
+const FIRST=["Edmund","Violet","Rupert","Imogen","Silas","Clara","Hugo","Beatrix","Felix","Marian","Julian","Agatha","Oswald","Lillian","Percy","Nadia"];
+const LAST=["Ashford","Blackwood","Crane","Delacroix","Fairchild","Grimsby","Holloway","Ingram","Kessler","Lockhart","Marlowe","Northcott","Pemberton","Quill","Sterling","Thorne"];
+const ROLES=["butler","doctor","nephew","gardener","chef","lawyer","pianist","chauffeur","journalist","governess"];
+const COATS=[{n:"red",c:"#c0392b"},{n:"green",c:"#1e8f5a"},{n:"blue",c:"#2c4a8c"},{n:"yellow",c:"#d4a017"},{n:"purple",c:"#7d3c98"},{n:"grey",c:"#7f8c8d"},{n:"orange",c:"#d9772b"},{n:"teal",c:"#168a8a"}];
+const ROOMS=["Library","Conservatory","Wine Cellar","Ballroom","Study","Kitchen","Greenhouse","Observatory","Billiard Room","Attic"];
+const WEAPONS=["brass candlestick","antique letter opener","marble bookend","silver fire poker","ceremonial dagger","heavy bronze clock"];
+const VICTIMS=["Lord Edmund Vane","Lady Cordelia Frost","Sir Alaric Penhallow","Madame Odette Rousseau","Colonel Barnaby Reeve","Dr. Theodora Wyndham"];
+const TIMES=["8:15 PM","8:50 PM","9:20 PM","9:45 PM","10:10 PM","10:35 PM","11:05 PM"];
+const SRC=["the housekeeping log","a security camera","a waiter’s testimony","the guest book","a signed witness statement"];
+const rng=s=>{let a=s>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
+const hash=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0};
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const dkey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+
+function gen(date,level){
+  const R=rng(hash(date+"#"+level));
+  const pick=a=>a[Math.floor(R()*a.length)];
+  const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const n=Math.min(3+Math.ceil(level/2),8);
+  const roles=shuf(ROLES),coats=shuf(COATS),fn=shuf(FIRST),ln=shuf(LAST);
+  const sus=Array.from({length:n},(_,i)=>({name:fn[i]+" "+ln[i],role:roles[i],coat:coats[i],present:true,key:true,motive:true}));
+  const k=Math.floor(R()*n);
+  const rooms=shuf(ROOMS),scene=rooms[0],others=rooms.slice(1);
+  const time=pick(TIMES),weapon=pick(WEAPONS),victim=pick(VICTIMS);
+  const dRate=Math.min(0.1+level*0.08,0.9);
+  const ref=s=>{if(R()>dRate)return s.name;return R()<.5?"the "+s.role:"the guest in the "+s.coat.n+" coat"};
+  const proof=(s,c)=>{const r=ref(s);
+    if(c==="present")return `${cap(r)} was in the ${pick(others)} at ${time}, according to ${pick(SRC)}.`;
+    if(c==="key")return `The ${weapon} sat in a locked cabinet, and the key log shows ${r} never held a key.`;
+    return `${cap(r)} had no reason to wish ${victim} harm; their old quarrel was settled weeks ago.`};
+  const herr=(s,c)=>{const r=ref(s);
+    if(c==="present")return `${cap(r)} was seen heading toward the ${scene} around ${time}.`;
+    if(c==="key")return `${cap(r)} was seen borrowing the cabinet key some days earlier.`;
+    return `${cap(r)} was overheard arguing bitterly with ${victim} about money.`};
+  const fl=["present","key","motive"],clues=[];
+  sus.forEach((s,i)=>{if(i===k)return;
+    const f=[pick(fl)];
+    if(level<5&&R()<.5)f.push(pick(fl.filter(x=>x!==f[0])));
+    f.forEach(c=>s[c]=false);
+    clues.push(proof(s,pick(f)))});
+  const hc=Math.min(Math.floor(level/2),7);
+  for(let t=0,got=0;got<hc&&t<60;t++){
+    const s=pick(sus),c=pick(fl);
+    if(!s[c])continue;
+    const x=herr(s,c);
+    if(!clues.includes(x)){clues.push(x);got++}}
+  const ks=sus[k];
+  return{sus,k,clues:shuf(clues),scene,time,weapon,victim,
+    title:"Death in the "+scene,
+    intro:`${victim} was found dead in the ${scene} after a dinner party at Ravenmoor Hall. The ${weapon} lay beside the body. Everyone invited had the run of the house, and exactly one guest did it.`,
+    solution:`${ks.name}, the ${ks.role}, struck down ${victim} in the ${scene} at ${time}. They were the only suspect who was at the scene, had access to the ${weapon}, and held a motive.`};
+}
+
+const store={get(){try{return JSON.parse(localStorage.getItem("ccd1"))}catch(e){return null}},set(v){try{localStorage.setItem("ccd1",JSON.stringify(v))}catch(e){}}};
+const S=store.get()||{solved:0,streak:0,last:"",days:{}};
+const now=new Date(),today=dkey(now);
+if(!S.days[today])S.days[today]={level:Math.min(1+S.solved,12),status:"open",wrong:[]};
+const D=S.days[today],C=gen(today,D.level),cleared=new Set(),$=id=>document.getElementById(id);
+let pending=-1;
+
+function render(){
+  $("date").textContent=now.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  $("lvl").textContent=D.level;$("sol").textContent=S.solved;$("stk").textContent=S.streak;
+  $("file").innerHTML=`<span class="stamp">Case ${D.level} · ${C.sus.length} suspects</span><h2 style="margin:0;border:0;color:var(--ink);font-size:1.3rem">${C.title}</h2><p>${C.intro}</p>
+  <div class="facts"><div><small>Victim</small>${C.victim}</div><div><small>Scene</small>${C.scene}</div><div><small>Time of death</small>${C.time}</div><div><small>Weapon</small>${C.weapon}</div></div>`;
+  $("clues").innerHTML=C.clues.map(c=>`<li>${c}</li>`).join("");
+  const over=D.status!=="open";
+  $("sus").innerHTML=C.sus.map((s,i)=>{
+    const wrong=D.wrong.includes(i);
+    return `<div class="sus ${cleared.has(i)||wrong?"cleared":""}"><div class="nm"><span class="dot" style="background:${s.coat.c}"></span>${s.name}</div>
+    <div class="rl">${cap(s.role)} · ${s.coat.n} coat</div>
+    <div class="btns"><button data-r="${i}">${cleared.has(i)?"Undo":"Rule out"}</button>
+    <button class="acc" data-a="${i}" ${over||wrong?"disabled":""}>${pending===i?"Sure?":"Accuse"}</button></div></div>`}).join("");
+  $("lives").textContent="♥".repeat(3-D.wrong.length)+"♡".repeat(D.wrong.length);
+  const r=$("res");
+  if(over){r.hidden=false;
+    r.innerHTML=D.status==="won"
+      ?`<span class="stamp">Case closed</span><p><b>Correct!</b> ${C.solution}</p><p class="mute">Next case difficulty: ${Math.min(S.solved+1,12)}. New case in <span id="cd" class="mono"></span>.</p>`
+      :`<span class="stamp">Unsolved</span><p>The killer slipped away. ${C.solution}</p><p class="mute">Difficulty stays the same until you solve one. New case in <span id="cd" class="mono"></span>.</p>`}
+}
+function tick(){const e=$("cd");if(!e)return;const m=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)-new Date();
+  if(m<=0){location.reload();return}
+  const p=x=>String(Math.floor(x)).padStart(2,"0");e.textContent=p(m/36e5)+":"+p(m%36e5/6e4)+":"+p(m%6e4/1e3)}
+function finish(won){
+  D.status=won?"won":"lost";
+  if(won){const y=new Date(now);y.setDate(y.getDate()-1);S.streak=S.last===dkey(y)?S.streak+1:1;S.solved++;S.last=today}
+  else S.streak=0;
+  store.set(S)}
+$("sus").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b||D.status!=="open"&&!b.dataset.r)return;
+  if(b.dataset.r!==undefined){const i=+b.dataset.r;cleared.has(i)?cleared.delete(i):cleared.add(i);render();return}
+  const i=+b.dataset.a;
+  if(pending!==i){pending=i;render();return}
+  pending=-1;
+  if(i===C.k)finish(true);
+  else{D.wrong.push(i);if(D.wrong.length>=3)finish(false);else store.set(S)}
+  render();tick()});
+render();tick();setInterval(tick,1000);
+</script>
+</body>
+</html>
